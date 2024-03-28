@@ -67,6 +67,56 @@ BEGIN
 	SET Status = 'Busy' FROM Phong JOIN inserted ON Phong.SoPhong = inserted.SoPhong 
 END
 GO
+CREATE TRIGGER insert_TT ON ThanhToan AFTER INSERT AS
+BEGIN
+	UPDATE Phong 
+	SET Status = 'Active' FROM Phong JOIN inserted ON Phong.SoPhong = inserted.SoPhong 
+END
+GO
+CREATE FUNCTION xuat_hd (@madp char(10), @matt char(10))
+RETURNS @tbl_hd TABLE (
+					MaHD char(10),
+					MaKH char(10),
+					SoPhong int,
+					GioDat datetime,
+					GioTra datetime,
+					TienTT Float
+					)
+AS
+BEGIN
+	DECLARE @mahd char(10)
+	SET @mahd = @madp
+
+	DECLARE @makh char(10)
+	SELECT @makh =  MaKH FROM ThanhToan WHERE MaTT LIKE @matt
+
+	DECLARE @sophong int 
+	SELECT @sophong = SoPhong FROM ThanhToan WHERE MaTT LIKE @matt
+
+	DECLARE @giodat datetime
+	SELECT @giodat = GioDat FROM DatPhong WHERE MaDP LIKE @madp
+
+	DECLARE @giotra datetime
+	SELECT @giotra = GioTra FROM ThanhToan Where MaTT LIKE @matt
+
+	DECLARE @thoigian float
+	SET @thoigian = DATEDIFF(MINUTE, @giodat, @giotra) / 60.0 
+	DECLARE @sotien float
+	IF (@thoigian > 8)
+		BEGIN
+			IF (@thoigian < 24)
+				SET @sotien = 200000.0
+			ELSE
+				SET @sotien = (@thoigian/24) * 200000.0 + 50000.0
+		END
+	ELSE
+		BEGIN
+			SET @sotien = @thoigian * 80000.0
+		END
+	INSERT INTO @tbl_hd VALUES (@mahd, @makh, @sophong, @giodat, @giotra, @sotien)
+	RETURN
+END
+GO
 --SAMPLE
 INSERT INTO TaiKhoan VALUES ('anhpn','12345678','staff'),
 							('anhtn','12345678','staff'),
@@ -98,9 +148,16 @@ INSERT INTO DatPhong VALUES	('HD01','NV01','KH04',6,'2023-5-24 23:30'),
 							('HD02','NV01','KH03',1,'2023-5-24 21:30'),
 							('HD03','NV02','KH01',9,'2023-5-24 17:30'),
 							('HD04','NV04','KH02',7,'2023-5-24 15:30')
+
 GO
-GO
-SELECT * FROM HoaDon
+SELECT * FROM DatPhong
 SELECT * FROM NhanVien
 SELECT * FROM TaiKhoan
+SELECT * FROM Phong
+GO
+INSERT INTO ThanhToan VALUES	('TT01','KH04',6,'2023-5-29 23:30')
+INSERT INTO ThanhToan VALUES	('TT02','KH03',1,'2023-5-26 23:30')
+SELECT * FROM Phong
+SELECT * FROM xuat_hd('HD01','TT01')
+SELECT * FROM xuat_hd('HD02','TT02')
 GO
